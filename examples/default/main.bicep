@@ -1,19 +1,12 @@
-# bicep-az-sql
-Bicep module to deploy an Azure SQL Server and databases.
 
-##
-
-The following example deploys a SQL Server in the UK South region, along with 2 database ('myappDb' and 'myappDb2') and an Azure AD user as the SQL Administrator. You can see that these 2 databases are deployed with different SKUs.
-
-```js
 module sql '../../main.bicep' = {
   name: 'sql'
   params:{
     environment: 'dev'
     application: 'myapp'
     location: 'uksouth'
-    serverAdminObjectId: '7fygioT-35b2-55cb-a173-7865383edf34'
-    serverAdminUserName: 'sqlAdmin'
+    serverAdminObjectId: '7f8e4746-09b3-49cb-b197-0591383edca5'
+    serverAdminUserName: 'clureA'
     principalType: 'User'
     
     sqlDatabases: [
@@ -35,4 +28,3 @@ module sql '../../main.bicep' = {
 
   }
 }
-```

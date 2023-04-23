@@ -5,7 +5,6 @@ param location string
 param serverAdminObjectId string
 param serverAdminUserName string
 
-
 @allowed(['User', 'Group', 'Application'])
 param principalType string 
 

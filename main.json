@@ -1,0 +1,105 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.16.1.55165",
+      "templateHash": "10676739511438147130"
+    }
+  },
+  "parameters": {
+    "environment": {
+      "type": "string"
+    },
+    "application": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {}
+    },
+    "location": {
+      "type": "string"
+    },
+    "serverAdminObjectId": {
+      "type": "string"
+    },
+    "serverAdminUserName": {
+      "type": "string"
+    },
+    "principalType": {
+      "type": "string",
+      "allowedValues": [
+        "User",
+        "Group",
+        "Application"
+      ]
+    },
+    "sqlDatabases": {
+      "type": "array",
+      "defaultValue": [
+        {
+          "dbName": "db1"
+        }
+      ],
+      "metadata": {
+        "description": "An array of objects containing the database name, skuName, tier and capacity.\nEXAMPLE:\n[\n  {\n    name: \"db1\",\n    skuName: \"S2\",\n    tier: \"Standard\",\n    capacity: 100\n  },\n  {\n    name: \"db2\",\n    skuName: \"GP_Gen5_6\",\n    tier: \"GP_Gen5\",\n    capacity: 100\n  }\n]\n"
+      }
+    }
+  },
+  "variables": {
+    "tenantId": "[tenant().tenantId]",
+    "sqlServerName": "[format('sql-{0}-{1}', parameters('environment'), parameters('application'))]",
+    "assignedTags": "[union(variables('defaultTags'), parameters('tags'))]",
+    "defaultTags": {
+      "Environment": "[parameters('environment')]",
+      "application": "[parameters('application')]"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Sql/servers",
+      "apiVersion": "2022-05-01-preview",
+      "name": "[variables('sqlServerName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('assignedTags')]",
+      "properties": {
+        "version": "12.0",
+        "publicNetworkAccess": "Disabled",
+        "administrators": {
+          "administratorType": "ActiveDirectory",
+          "azureADOnlyAuthentication": true,
+          "tenantId": "[variables('tenantId')]",
+          "login": "[parameters('serverAdminUserName')]",
+          "principalType": "[parameters('principalType')]",
+          "sid": "[parameters('serverAdminObjectId')]"
+        }
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      }
+    },
+    {
+      "copy": {
+        "name": "sqlServerDatabase",
+        "count": "[length(parameters('sqlDatabases'))]"
+      },
+      "type": "Microsoft.Sql/servers/databases",
+      "apiVersion": "2022-05-01-preview",
+      "name": "[format('{0}/{1}', variables('sqlServerName'), parameters('sqlDatabases')[copyIndex()].name)]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('assignedTags')]",
+      "sku": {
+        "name": "[if(not(empty(parameters('sqlDatabases')[copyIndex()].skuName)), parameters('sqlDatabases')[copyIndex()].skuName, 'S0')]",
+        "tier": "[if(not(empty(parameters('sqlDatabases')[copyIndex()].tier)), parameters('sqlDatabases')[copyIndex()].tier, 'Standard')]"
+      },
+      "properties": {
+        "readScale": "Disabled"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Sql/servers', variables('sqlServerName'))]"
+      ]
+    }
+  ]
+}

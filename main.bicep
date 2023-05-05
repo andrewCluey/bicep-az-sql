@@ -8,27 +8,6 @@ param serverAdminUserName string
 @allowed(['User', 'Group', 'Application'])
 param principalType string 
 
-@description('''
-An array of objects containing the database name, skuName, tier and capacity.
-EXAMPLE:
-[
-  {
-    name: "db1",
-    skuName: "S2",
-    tier: "Standard",
-    capacity: 100
-  },
-  {
-    name: "db2",
-    skuName: "GP_Gen5_6",
-    tier: "GP_Gen5",
-    capacity: 100
-  }
-]
-''')
-param sqlDatabases array = [{
-  dbName: 'db1'
-}]
 
 
 /*
@@ -53,12 +32,12 @@ var defaultTags = {
 
 
 // resources
-resource sqlServer 'Microsoft.Sql/servers@2022-05-01-preview' = {
+resource sqlServer 'Microsoft.Sql/servers@2022-08-01-preview' = {
   name: sqlServerName
   location: location
   tags: assignedTags
-  properties: {
-    version: '12.0'
+  properties: { 
+    version: '12.0' 
     //minimalTlsVersion: 
     publicNetworkAccess: 'Disabled'
     //keyId: // future enhancement to allow customer managed key data encryption
@@ -71,33 +50,68 @@ resource sqlServer 'Microsoft.Sql/servers@2022-05-01-preview' = {
       sid: serverAdminObjectId       // SID (object ID) of the server administrator.	
     } 
   }
+
   identity: {
     type: 'SystemAssigned'
   }
 }
 
 
-resource sqlServerDatabase 'Microsoft.Sql/servers/databases@2022-05-01-preview' = [for db in sqlDatabases: {
+resource SVRAuditing 'Microsoft.Sql/servers/auditingSettings@2022-08-01-preview' = {
+  name: 'default'
   parent: sqlServer
-  name: db.name
+  properties: {
+    storageAccountAccessKey: 'dssd'
+    retentionDays: 91
+    storageEndpoint: 'https://storageaccount.blob.core.windows.net'   
+    state: 'Enabled'
+  }
+}
+
+resource symbolicname 'Microsoft.Sql/servers/extendedAuditingSettings@2022-05-01-preview' = {
+  name: 'default'
+  parent: sqlServer
+  properties: {
+    isAzureMonitorTargetEnabled: true
+    state: 'Enabled'
+    storageAccountAccessKey: 'dssd'
+    storageEndpoint: 'https://storageaccount.blob.core.windows.net'
+    retentionDays: 91   
+  }
+}
+
+
+resource sqlServerDatabase 'Microsoft.Sql/servers/databases@2022-08-01-preview' = {
+  parent: sqlServer
+  name: 'db1'
   location: location
   tags: assignedTags 
 
   // az sql db list-editions -l uksouth -o table
   sku: {
-    name: ((!empty(db.skuName)) ? db.skuName : 'S0') // if skuName is not provided, set to 'S0'
-    tier: ((!empty(db.tier)) ? db.tier : 'Standard') // if tier is not provided, set to 'Standard'
+    name: 'S0'
+    tier: 'Standard'
   }
 
   properties: {
+    collation: 'SQL_Latin1_General_CP1_CI_AS'
+    maxSizeBytes: 1073741824
+    requestedBackupStorageRedundancy: 'Geo'
+    isLedgerOn: false
    // collation: db.databaseCollation
    // catalogCollation: db.databaseCollation
     readScale: 'Disabled'
    // requestedBackupStorageRedundancy: 'Geo'
    // isLedgerOn: false
   }
-}]
 
+  resource auditing 'auditingSettings' = {
+    name: 'default'
+    properties: {
+      state: 'Enabled'
+    }
+  }
+}
 
 /*
 
